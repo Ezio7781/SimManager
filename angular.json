@@ -58,7 +58,8 @@
               "buildTarget": "sim-manager:build:production"
             },
             "development": {
-              "buildTarget": "sim-manager:build:development"
+              "buildTarget": "sim-manager:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

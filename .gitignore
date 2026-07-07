@@ -26,7 +26,6 @@ Thumbs.db
 
 # Vercel
 .vercel
-vercel.json
 
 # Log files
 npm-debug.log*
