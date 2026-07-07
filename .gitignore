@@ -5,7 +5,7 @@ node_modules/
 dist/
 .angular/
 
-# Environment files
+# Environment files (DO NOT commit .env!)
 .env
 .env.local
 .env.*.local

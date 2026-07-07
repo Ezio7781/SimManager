@@ -3,6 +3,8 @@ import {
   getSimCards,
   addSimCard,
   updateSimCardStatus,
+  updateSimCard,
+  deleteSimCard,
   getStatsFromCards,
 } from './services/sim-card.service';
 import { SimCard } from './types/sim-card';
@@ -19,13 +21,26 @@ const App: React.FC = () => {
   const [pageError, setPageError] = useState('');
   const [statusMenuOpenId, setStatusMenuOpenId] = useState<string | null>(null);
   const [showAddSimModal, setShowAddSimModal] = useState(false);
+  const [showEditSimModal, setShowEditSimModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   const [showPersonalizePanel, setShowPersonalizePanel] = useState(false);
   const [addSimError, setAddSimError] = useState('');
+  const [editSimError, setEditSimError] = useState('');
   const [newSimForm, setNewSimForm] = useState({
     id: '',
     phoneNumber: '',
     personName: '',
     status: 'Active' as const,
+  });
+  const [editingSim, setEditingSim] = useState<SimCard | null>(null);
+  const [editSimForm, setEditSimForm] = useState<{
+    phoneNumber: string;
+    personName: string;
+    status: 'Active' | 'Deactivated' | 'Spam';
+  }>({
+    phoneNumber: '',
+    personName: '',
+    status: 'Active',
   });
   const [orgName, setOrgName] = useState('EduConnect');
   const [selectedColor, setSelectedColor] = useState('#667eea');
@@ -185,6 +200,64 @@ const App: React.FC = () => {
       setAddSimError('');
     } catch {
       setAddSimError('Unable to save the SIM right now.');
+    }
+  };
+
+  const handleEditSim = (sim: SimCard) => {
+    setEditingSim(sim);
+    setEditSimForm({
+      phoneNumber: sim.phoneNumber,
+      personName: sim.personName,
+      status: sim.status,
+    });
+    setEditSimError('');
+    setShowEditSimModal(true);
+  };
+
+  const handleSubmitEditSim = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingSim) return;
+
+    const phoneNumber = editSimForm.phoneNumber.trim();
+    const personName = editSimForm.personName.trim();
+
+    if (!phoneNumber || !personName) {
+      setEditSimError('Enter a phone number and assigned person.');
+      return;
+    }
+
+    try {
+      const data = await updateSimCard(editingSim.id, {
+        phoneNumber,
+        personName,
+        status: editSimForm.status,
+      });
+      setSimCards(data);
+      setPageError('');
+      setShowEditSimModal(false);
+      setEditingSim(null);
+      setEditSimError('');
+    } catch {
+      setEditSimError('Unable to update the SIM right now.');
+    }
+  };
+
+  const handleDeleteSim = (id: string) => {
+    setShowDeleteConfirm(id);
+  };
+
+  const confirmDeleteSim = async () => {
+    if (!showDeleteConfirm) return;
+
+    try {
+      console.log('Confirming delete for SIM:', showDeleteConfirm);
+      const data = await deleteSimCard(showDeleteConfirm);
+      setSimCards(data);
+      setPageError('');
+      setShowDeleteConfirm(null);
+    } catch (error) {
+      console.error('Delete failed:', error);
+      setPageError('Unable to delete the SIM right now.');
     }
   };
 
@@ -369,6 +442,7 @@ const App: React.FC = () => {
                     <th>ASSIGNED TO</th>
                     <th>ADDED</th>
                     <th>STATUS</th>
+                    <th>MANAGE</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -467,11 +541,39 @@ const App: React.FC = () => {
                           )}
                         </div>
                       </td>
+                      <td className="manage-cell">
+                        <div className="manage-actions">
+                          <button
+                            type="button"
+                            className="manage-btn manage-btn-edit"
+                            onClick={() => handleEditSim(sim)}
+                            title="Edit SIM"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M18.5 2.5C18.8978 2.10218 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10218 21.5 2.5C21.8978 2.89782 22.1213 3.43743 22.1213 4C22.1213 4.56257 21.8978 5.10218 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" fill="currentColor"/>
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            className="manage-btn manage-btn-delete"
+                            onClick={() => handleDeleteSim(sim.id)}
+                            title="Delete SIM"
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M3 6H5H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M8 6V4C8 3.46957 8.21071 2.96086 8.58579 2.58579C8.96086 2.21071 9.46957 2 10 2H14C14.5304 2 15.0391 2.21071 15.4142 2.58579C15.7893 2.96086 16 3.46957 16 4V6M19 6V20C19 20.5304 18.7893 21.0391 18.4142 21.4142C18.0391 21.7893 17.5304 22 17 22H7C6.46957 22 5.96086 21.7893 5.58579 21.4142C5.21071 21.0391 5 20.5304 5 20V6H19Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                              <path d="M10 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              <path d="M14 11V17" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                   {filteredSimCards.length === 0 && (
                     <tr>
-                      <td className="empty-state-cell" colSpan={5}>
+                      <td className="empty-state-cell" colSpan={6}>
                         <div className="empty-state">
                           <div className="empty-state-title">No SIM cards yet</div>
                           <div className="empty-state-text">Add your first SIM to start tracking numbers, assignees, and statuses.</div>
@@ -568,6 +670,103 @@ const App: React.FC = () => {
                 <button type="submit" className="btn-primary-header">Save SIM</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showEditSimModal && editingSim && (
+        <div className="modal-overlay" onClick={() => setShowEditSimModal(false)}>
+          <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Edit SIM</h3>
+                <p>Update the SIM record details.</p>
+              </div>
+              <button type="button" className="modal-close" onClick={() => setShowEditSimModal(false)}>
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5 5L15 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                  <path d="M15 5L5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="sim-id-display">
+              <span className="sim-id-label">SIM ID:</span>
+              <span className="sim-id-value">{editingSim.id}</span>
+            </div>
+
+            <form className="sim-form" onSubmit={handleSubmitEditSim}>
+              <div className="sim-form-grid">
+                <div className="form-group">
+                  <label htmlFor="edit-sim-phone">Phone Number</label>
+                  <input
+                    id="edit-sim-phone"
+                    name="phoneNumber"
+                    type="text"
+                    value={editSimForm.phoneNumber}
+                    onChange={(e) => setEditSimForm({ ...editSimForm, phoneNumber: e.target.value })}
+                    placeholder="+1 (555) 000-0000"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-sim-person">Assigned To</label>
+                  <input
+                    id="edit-sim-person"
+                    name="personName"
+                    type="text"
+                    value={editSimForm.personName}
+                    onChange={(e) => setEditSimForm({ ...editSimForm, personName: e.target.value })}
+                    placeholder="Jane Doe"
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="edit-sim-status">Status</label>
+                  <select
+                    id="edit-sim-status"
+                    name="status"
+                    value={editSimForm.status}
+                    onChange={(e) => setEditSimForm({ ...editSimForm, status: e.target.value as any })}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Deactivated">Deactivated</option>
+                    <option value="Spam">Spam</option>
+                  </select>
+                </div>
+              </div>
+
+              {editSimError && <div className="form-error">{editSimError}</div>}
+
+              <div className="modal-actions">
+                <button type="button" className="btn-secondary" onClick={() => setShowEditSimModal(false)}>Cancel</button>
+                <button type="submit" className="btn-primary-header">Update SIM</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {showDeleteConfirm && (
+        <div className="modal-overlay" onClick={() => setShowDeleteConfirm(null)}>
+          <div className="modal-panel modal-panel-small" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div>
+                <h3>Delete SIM</h3>
+                <p>Are you sure you want to delete this SIM card?</p>
+              </div>
+              <button type="button" className="modal-close" onClick={() => setShowDeleteConfirm(null)}>
+                <svg width="18" height="18" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5 5L15 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                  <path d="M15 5L5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => setShowDeleteConfirm(null)}>Cancel</button>
+              <button type="button" className="btn-danger" onClick={confirmDeleteSim}>Delete</button>
+            </div>
           </div>
         </div>
       )}
