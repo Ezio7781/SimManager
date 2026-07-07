@@ -10,8 +10,8 @@ type StatusPayload = {
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   res.setHeader('Content-Type', 'application/json');
 
-  if (!process.env.POSTGRES_URL) {
-    res.status(500).json({ message: 'Missing Vercel Postgres environment variables.' });
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    res.status(500).json({ message: 'Missing Supabase environment variables.' });
     return;
   }
 
@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         res.setHeader('Allow', 'GET, POST, PATCH');
         res.status(405).json({ message: 'Method not allowed.' });
     }
-  } catch (error) {
+  } catch (error: any) {
     const message = error instanceof Error ? error.message : 'Unexpected server error.';
     const statusCode = /duplicate key|unique constraint/i.test(message) ? 409 : 500;
     res.status(statusCode).json({ message });

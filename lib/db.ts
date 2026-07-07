@@ -1,71 +1,65 @@
-import { sql } from '@vercel/postgres';
+import { createClient } from '@supabase/supabase-js';
 import { SimCard } from '../src/app/models/sim-card.model';
 
-type SimRow = {
-  id: string;
-  phone_number: string;
-  person_name: string;
-  status: SimCard['status'];
-  added_date: string;
-};
-
-let schemaReady: Promise<void> | null = null;
+// Initialize Supabase client
+const supabaseUrl = process.env.SUPABASE_URL as string;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY as string;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function ensureSimTable(): Promise<void> {
-  if (!schemaReady) {
-    schemaReady = sql`
-      CREATE TABLE IF NOT EXISTS sim_cards (
-        id TEXT PRIMARY KEY,
-        phone_number TEXT NOT NULL,
-        person_name TEXT NOT NULL,
-        status TEXT NOT NULL CHECK (status IN ('Active', 'Deactivated', 'Spam')),
-        added_date DATE NOT NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `.then(() => undefined);
-  }
-
-  return schemaReady;
+  // Table is created in Supabase dashboard via SQL Editor
+  // We'll just make sure the client is initialized
+  return;
 }
 
 export async function listSimCards(): Promise<SimCard[]> {
-  await ensureSimTable();
-  const result = await sql<SimRow>`
-    SELECT id, phone_number, person_name, status, added_date
-    FROM sim_cards
-    ORDER BY created_at DESC, id ASC;
-  `;
+  const { data, error } = await supabase
+    .from('sim_cards')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: true });
 
-  return result.rows.map(mapRowToSimCard);
-}
+  if (error) {
+    throw error;
+  }
 
-export async function insertSimCard(simCard: SimCard): Promise<SimCard[]> {
-  await ensureSimTable();
-  await sql`
-    INSERT INTO sim_cards (id, phone_number, person_name, status, added_date)
-    VALUES (${simCard.id}, ${simCard.phoneNumber}, ${simCard.personName}, ${simCard.status}, ${simCard.addedDate});
-  `;
-
-  return listSimCards();
-}
-
-export async function updateSimCardStatus(id: string, status: SimCard['status']): Promise<SimCard[]> {
-  await ensureSimTable();
-  await sql`
-    UPDATE sim_cards
-    SET status = ${status}
-    WHERE id = ${id};
-  `;
-
-  return listSimCards();
-}
-
-function mapRowToSimCard(row: SimRow): SimCard {
-  return {
+  // Map to our SimCard model
+  return data.map(row => ({
     id: row.id,
     phoneNumber: row.phone_number,
     personName: row.person_name,
     status: row.status,
     addedDate: row.added_date
-  };
+  }));
+}
+
+export async function insertSimCard(simCard: SimCard): Promise<SimCard[]> {
+  const { error } = await supabase
+    .from('sim_cards')
+    .insert({
+      id: simCard.id,
+      phone_number: simCard.phoneNumber,
+      person_name: simCard.personName,
+      status: simCard.status,
+      added_date: simCard.addedDate
+    });
+
+  if (error) {
+    throw error;
+  }
+
+  return listSimCards();
+}
+
+export async function updateSimCardStatus(id: string, status: SimCard['status']): Promise<SimCard[]> {
+  const { error } = await supabase
+    .from('sim_cards')
+    .update({ status })
+    .eq('id', id);
+
+  if (error) {
+    throw error;
+  }
+
+  return listSimCards();
 }
