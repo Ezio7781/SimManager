@@ -2,6 +2,7 @@
   "name": "sim-manager",
   "version": "1.0.0",
   "type": "module",
+  "description": "EduConnect SIM Manager",
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
