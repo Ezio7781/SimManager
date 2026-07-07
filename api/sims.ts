@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { insertSimCard, listSimCards, updateSimCardStatus } from '../lib/db';
-import { SimCard } from '../src/app/models/sim-card.model';
+import { SimCard } from '../src/types/sim-card';
 
 type StatusPayload = {
   id?: string;
@@ -10,8 +10,8 @@ type StatusPayload = {
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
   res.setHeader('Content-Type', 'application/json');
 
-  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    res.status(500).json({ message: 'Missing Supabase environment variables.' });
+  if (!process.env.POSTGRES_URL) {
+    res.status(500).json({ message: 'Missing Vercel Postgres environment variables.' });
     return;
   }
 
@@ -42,7 +42,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse): 
         res.setHeader('Allow', 'GET, POST, PATCH');
         res.status(405).json({ message: 'Method not allowed.' });
     }
-  } catch (error: any) {
+  } catch (error) {
     const message = error instanceof Error ? error.message : 'Unexpected server error.';
     const statusCode = /duplicate key|unique constraint/i.test(message) ? 409 : 500;
     res.status(statusCode).json({ message });
